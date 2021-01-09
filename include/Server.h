@@ -95,6 +95,10 @@ private:
 
     void ExcuteCommandPlayerPosition(size_t index,std::string& command);
     std::string ParsePlayerPositionCommand(size_t index);
+    void ExcuteCommandShoot(size_t index,std::string& command);
+    std::string ParseBulletPositionCommand(size_t index);
+
+    void RemoveBullet(size_t index);
 
     int tcp_socket;
     fd_set connectedFdSet;
@@ -108,4 +112,9 @@ private:
     struct timeval timeout;
 
     Player players[MAX_CLINET_NUM];
+    std::vector<Bullet> bullets;
+
+    float bulletSpeed = 30;
+
+    float playBoundRadius = 2.7;
 };

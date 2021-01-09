@@ -1,6 +1,7 @@
 #include "Server.h"
 #include <sstream>
 #include <iostream>
+#include <math.h>
 #include "Timer.h"
 
 extern Timer gTimer;
@@ -179,6 +180,30 @@ std::string Server::ParsePlayerPositionCommand(size_t index){
     return std::move(cmd);
 }
 
+void Server::ExcuteCommandShoot(size_t index,std::string& command){
+    std::vector<std::string> data;
+    splitstr(data,command,',');
+
+    Bullet bullet;
+    bullet.Position[0] = (float)std::stoi(data[0]) / 10000.;
+    bullet.Position[1] = (float)std::stoi(data[1]) / 10000.;
+    bullet.Position[2] = (float)std::stoi(data[2]) / 10000.;
+    bullet.Speed[0] = (float)std::stoi(data[3]) / 10000. * bulletSpeed;
+    bullet.Speed[1] = (float)std::stoi(data[4]) / 10000. * bulletSpeed;
+    bullet.Speed[2] = (float)std::stoi(data[5]) / 10000. * bulletSpeed;
+    bullet.id = index;
+
+    bullets.push_back(bullet);
+}
+
+std::string Server::ParseBulletPositionCommand(size_t index){
+    std::string cmd = std::to_string((int)(bullets[index].Position[0] * 10000.)) + ",";
+    cmd += std::to_string((int)(bullets[index].Position[1] * 10000.)) + ",";
+    cmd += std::to_string((int)(bullets[index].Position[2] * 10000.));
+
+    return cmd;
+}
+
 void Server::ParsePost(size_t index){
 
     std::cout << gTimer.Totaltime() << "s post from " << index << getProtocolCommandHeaderStr(mPost.head) << std::endl;
@@ -195,6 +220,10 @@ void Server::ParsePost(size_t index){
         switch(mPost.protocolCommands[i].type){
             case PROTOCOL_COMMAND_TYPE_PLAYER_POSITION:
                 ExcuteCommandPlayerPosition(index,mPost.protocolCommands[i].command);
+                break;
+            case PROTOCOL_COMMAND_TYPE_SHOOT:
+                ExcuteCommandShoot(index,mPost.protocolCommands[i].command);
+                break;
         }
     }
 
@@ -210,12 +239,28 @@ void Server::ParsePost(size_t index){
         }
     }
 
+    for(size_t i  = 0;i != bullets.size();i++){
+        ProtocolCommand cmd;
+        cmd.command = ParseBulletPositionCommand(i);
+        cmd.type = PROTOCOL_COMMAND_TYPE_BULLET_POSITION;
+        mPost.protocolCommands.push_back(cmd);
+    }
+
+    /*for(size_t i = 0;i != 1000;i++){
+        mPost.protocolCommands.push_back({PROTOCOL_COMMAND_TYPE_HELLO,"sadadoasddkaodkoaskdo"});
+    }*/
+
 
     std::cout << "post to " << index << getProtocolCommandHeaderStr(mPost.head) << std::endl;
     for(size_t i =0;i != mPost.protocolCommands.size();i++){
         std::string& command = mPost.protocolCommands[i].command;
         std::cout << std::to_string(index) << getProtocolCommandTypeStr(mPost.protocolCommands[i].type) << command << std::endl;
     }
+}
+
+float distance(float vec1[3],float vec2[3]){
+    float dx = vec1[0] - vec2[0],dy = vec1[1] - vec2[1],dz = vec1[2] - vec2[2];
+    return sqrt(dx * dx + dy * dy + dz * dz);
 }
 
 void Server::UpdateWorld(){
@@ -226,4 +271,38 @@ void Server::UpdateWorld(){
             "(" << players[i].Rotation[0] << "," << players[i].Rotation[1] << "," << players[i].Rotation[2] << ")" << std::endl;
         }
     }*/
+    float deltatime = gTimer.Deltatime();
+    int i = 0;
+    while(i < bullets.size()){
+        bullets[i].Position[0] += deltatime * bullets[i].Speed[0];
+        bullets[i].Position[1] += deltatime * bullets[i].Speed[1];
+        bullets[i].Position[2] += deltatime * bullets[i].Speed[2];
+
+        if(abs(bullets[i].Position[0]) > 200.f || bullets[i].Position[1] > 200.f || bullets[i].Position[1] < 0.f || abs(bullets[i].Position[2]) > 200.f){
+            RemoveBullet(i);
+        }else{
+            int hited_index = -1;
+            for(size_t j = 0;j != MAX_CLINET_NUM;j++){
+                if(connectedFd[j] > 0 && j != bullets[i].id){
+                    float dis = distance(bullets[i].Position,players[j].Position);
+                    if(dis < this->playBoundRadius){
+                        hited_index = j;
+                        break;
+                    }
+                }
+            }
+            if(hited_index < 0)
+                i++;
+            else{
+                RemoveBullet(i);
+            }
+        }
+    }
+    //std::cout << "bullet num:" << bullets.size() << std::endl;
+}
+
+
+void Server::RemoveBullet(size_t index){
+    std::swap(bullets[index],bullets[bullets.size() - 1]);
+    bullets.pop_back();
 }
