@@ -246,6 +246,23 @@ void Server::ParsePost(size_t index){
         mPost.protocolCommands.push_back(cmd);
     }
 
+    size_t i = 0;
+    size_t count = 0;
+    while(i != events.size()){
+        if(events[i].shooted != index){
+            i++;
+            continue;
+        }
+        count++;
+        RemoveShoot(i);
+    }
+
+    if(count != 0){
+        ProtocolCommand cmd;
+        cmd.type = PROTOCOL_COMMAND_TYPE_SHOOTED;
+        cmd.command = std::to_string(count);
+        mPost.protocolCommands.push_back(cmd);
+    }
     /*for(size_t i = 0;i != 1000;i++){
         mPost.protocolCommands.push_back({PROTOCOL_COMMAND_TYPE_HELLO,"sadadoasddkaodkoaskdo"});
     }*/
@@ -295,6 +312,7 @@ void Server::UpdateWorld(){
                 i++;
             else{
                 RemoveBullet(i);
+                events.push_back({hited_index});
             }
         }
     }
@@ -305,4 +323,9 @@ void Server::UpdateWorld(){
 void Server::RemoveBullet(size_t index){
     std::swap(bullets[index],bullets[bullets.size() - 1]);
     bullets.pop_back();
+}
+
+void Server::RemoveShoot(size_t index){
+    std::swap(events[index],events[events.size() - 1]);
+    events.pop_back();
 }

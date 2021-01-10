@@ -81,6 +81,10 @@ struct Bullet{
     int   id;
 };
 
+struct ShootEvent{
+    int shooted;
+};
+
 
 #define MAX_CLINET_NUM 2
 constexpr size_t netBufferSize = 1 << 10;
@@ -99,6 +103,7 @@ private:
     std::string ParseBulletPositionCommand(size_t index);
 
     void RemoveBullet(size_t index);
+    void RemoveShoot(size_t index);
 
     int tcp_socket;
     fd_set connectedFdSet;
@@ -113,8 +118,9 @@ private:
 
     Player players[MAX_CLINET_NUM];
     std::vector<Bullet> bullets;
+    std::vector<ShootEvent> events;
 
     float bulletSpeed = 30;
 
-    float playBoundRadius = 2.7;
+    float playBoundRadius = 1.35;
 };
