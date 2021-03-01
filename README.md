@@ -1,4 +1,4 @@
-The server of the linux lession's final project.
+The server of the linux lesson's final project.
 
 The server can only run on linux os.
 
